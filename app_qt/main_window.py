@@ -944,6 +944,15 @@ class MainWindow(QMainWindow):
             r.documento_base = None
             r.score_base = 0
         r.divergencias = []
+        # Aviso IGNORÁVEL de divergência de data (decisão 2026-10: só aviso —
+        # boleto pode vencer depois/do pagamento antes; usuário confere).
+        # Não muda status nem bloqueia; aparece no painel de detalhe.
+        if comp is not None and comp.data and r.lancamento.data:
+            dias = abs((comp.data - r.lancamento.data).days)
+            if dias > 2:
+                r.divergencias.append(
+                    f"Data: {r.lancamento.data} vs {comp.data} "
+                    f"({dias} dias — conferir; pode ser normal p/ boleto/agendamento)")
         if not comp:
             # Remover só o comprovante NÃO apaga a base (decisão 2026-10: a
             # base pode ser legítima e reaproveitada; antes sumia junto).

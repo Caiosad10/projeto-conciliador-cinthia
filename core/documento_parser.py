@@ -197,9 +197,11 @@ def _extrair_favorecido(texto: str) -> str:
     texto = texto or ""
 
     # Valor ANTES do rótulo (extract Bradesco: "PAULO CESAR CANDIDONome:")
+    # e "MARCELO ALVES FERREIRANome do favorecido:" (sem \s: não atravessa linha)
     for padrao in [
-        r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.'-]{4,60}?)\s*Nome\s*:",
-        r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\s.'-]{4,60}?)\s*Benefici[aá]rio\s*:",
+        r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'\-]{4,60}?)\s*Nome\s+do\s+favorecido\s*:",
+        r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'\-]{4,60}?)\s*Nome\s*:",
+        r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'\-]{4,60}?)\s*Benefici[aá]rio\s*:",
     ]:
         match = re.search(padrao, texto, re.IGNORECASE)
         if match:
@@ -208,10 +210,12 @@ def _extrair_favorecido(texto: str) -> str:
             if _nome_favorecido_ok(nome):
                 return nome[:120]
 
+    # DEPOIS do rótulo: [^\S\n]* não atravessa quebra de linha (senão
+    # "Nome do favorecido:\nAgência: 938..." virava "favorecido")
     padroes = [
-        r"(?:Dados de quem recebeu\s*Nome:|Nome do favorecido:)\s*([^\n]{5,})",
-        r"(?:Nome|FAVORECIDO|Benefici[aá]rio)\s*:?\s*([^\n]{5,})",
-        r"(?:favorecido|beneficiario|recebedor|fornecedor)\s*:?\s*([^\n]{5,})",
+        r"(?:Dados de quem recebeu\s*Nome:|Nome do favorecido):[^\S\n]*([^\n]{5,})",
+        r"(?:Nome|FAVORECIDO|Benefici[aá]rio)\s*:[^\S\n]*([^\n]{5,})",
+        r"(?:favorecido|beneficiario|recebedor|fornecedor)\s*:[^\S\n]*([^\n]{5,})",
     ]
     for padrao in padroes:
         match = re.search(padrao, texto, re.IGNORECASE)
@@ -231,10 +235,15 @@ def _nome_favorecido_ok(nome: str) -> bool:
         return False
     if re.match(r"^[\d./-]+$", nome):
         return False
+    # Fragmento de rótulo nunca é nome ("do favorecido:", "Empresa: INCA...")
+    if ":" in nome:
+        return False
     baixo = nome.lower()
     if baixo.startswith("dados de quem") or baixo in {"nome", "cnpj/cpf", "instituição destino"}:
         return False
     if "bradesco" in baixo or "telefone" in baixo:
+        return False
+    if any(p in baixo for p in ("agência", "agencia", "conta", "cnpj", "cpf", "empresa")):
         return False
     return True
 
@@ -244,11 +253,15 @@ def _limpar_descricao_capturada(desc: str) -> str:
     """Remove ruído comum colado ao valor da descrição (extração PDF)."""
     desc = desc.strip()
     desc = re.split(
-        r"(?:Mídia|Valor|Tarifa|Identificação|Documento|Instituição|Nome|CNPJ)\s*:",
+        r"(?:M[íi]dia|Valor(?:\s*total)?|Tarifa|Identifica[çc][ãa]o|Documento|"
+        r"Institui[çc][ãa]o|Nome|CNPJ|CPF|Motivo\s+da\s+TED|Data\s+de\s+d[ée]bito|"
+        r"Autenta[çc][ãa]o)\s*:",
         desc,
         maxsplit=1,
         flags=re.IGNORECASE,
     )[0].strip()
+    # Numeração de motivo de TED: "7 - PAGTO ALUGUEIS..." -> "PAGTO ALUGUEIS..."
+    desc = re.sub(r"^\d+\s*[-–—]\s*", "", desc)
     desc = re.sub(r"\s+", " ", desc)
     return desc[:240]
 
@@ -270,7 +283,8 @@ def _descricao_parece_util(desc: str) -> bool:
         return False
     if baixo in {"descrição", "descricao", "descrição:", "descricao:", "identificação", "identificacao"}:
         return False
-    if baixo.endswith(":") and len(baixo) < 20:
+    # Fragmento de rótulo nunca é descrição ("Autenticação", "Data de débito:")
+    if bruto.endswith(":"):
         return False
     ruido = [
         "telefone", "sac", "ouvidoria", "bradesco net", "fale conosco",
@@ -278,7 +292,8 @@ def _descricao_parece_util(desc: str) -> bool:
         "dados de quem",
         "consulte o site",
         "demais telefones",
-        "cancelamentos",
+        "cancelamentos", "autenticação", "autenticacao",
+        "data de débito", "data de debito", "tarifa", "favorecido",
     ]
     return not any(p in baixo for p in ruido)
 
@@ -292,8 +307,10 @@ def _extrair_descricao(texto: str, nome: str) -> str:
 
     # 1. Valor ANTES do rótulo (ordem comum no extract do Bradesco)
     #    Ex.: "ALUGUEL 7NLCECN04_MES 07Descrição:"
+    #    TED para outro banco não tem "Descrição:" — tem "Motivo da TED:".
     for padrao in [
         r"([A-Za-z0-9][^\n]{2,100}?)\s*Descri[cç][aã]o\s*:",
+        r"([A-Za-z0-9][^\n]{2,100}?)\s*Motivo\s+da\s+TED\s*:",
     ]:
         match = re.search(padrao, texto, re.IGNORECASE)
         if match:
@@ -301,10 +318,12 @@ def _extrair_descricao(texto: str, nome: str) -> str:
             if _descricao_parece_util(desc):
                 return desc
 
-    # 2. Valor DEPOIS do rótulo
+    # 2. Valor DEPOIS do rótulo ([^\S\n]* não atravessa quebra de linha —
+    #    senão "Descrição:\n10/09/2026Data de débito:" virava "descrição")
     for padrao in [
-        r"Descri[cç][aã]o\s*:?\s*([^\n]{3,120})",
-        r"(?:Documento|DOCUMENTO)\s*:?\s*([^\n]{5,120})",
+        r"Descri[cç][aã]o\s*:[^\S\n]*([^\n]{3,120})",
+        r"Motivo\s+da\s+TED\s*:[^\S\n]*([^\n]{3,120})",
+        r"(?:Documento|DOCUMENTO)\s*:[^\S\n]*([^\n]{5,120})",
     ]:
         match = re.search(padrao, texto, re.IGNORECASE)
         if match:

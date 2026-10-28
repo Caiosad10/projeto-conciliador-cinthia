@@ -318,12 +318,14 @@ class ReciboGenerator:
             "identificacao", "consulte o site", "demais telefones", "fale conosco",
             "cancelamentos", "atendimento", "informações", "informacoes",
             "deficiente auditivo", "alo bradesco", "alô bradesco",
+            "autenticação", "autenticacao", "data de débito", "data de debito",
+            "tarifa", "favorecido",
         ]
         if any(p in baixo for p in ruido):
             return False
         if baixo in {"descrição", "descricao", "descrição:", "descricao:"}:
             return False
-        if baixo.endswith(":") and len(baixo) < 20:
+        if baixo.endswith(":"):
             return False
         return True
 
@@ -346,20 +348,34 @@ class ReciboGenerator:
         for padrao in [
             # valor ANTES do rótulo: "PC_237_MATERIAL ITNA03Descrição:"
             r"([A-Za-z0-9][^\n]{2,100}?)\s*Descri[cç][aã]o\s*:",
-            # valor DEPOIS do rótulo: "Descrição: ALUGUEL ..."
-            r"Descri[cç][aã]o\s*:?\s*([^\n]{3,120})",
+            # TED para outro banco: "7 - PAGTO ALUGUEIS...Motivo da TED:"
+            r"([A-Za-z0-9][^\n]{2,100}?)\s*Motivo\s+da\s+TED\s*:",
         ]:
             for match in re.finditer(padrao, texto, re.IGNORECASE):
                 desc = match.group(1).strip()
                 desc = re.split(
-                    r"(?:Mídia|Valor|Tarifa|Documento|Instituição|Nome|CNPJ|Identifica)\s*:",
+                    r"(?:M[íi]dia|Valor(?:\s*total)?|Tarifa|Documento|Instituição|"
+                    r"Nome|CNPJ|CPF|Data\s+de\s+d[ée]bito|Autenta[çc][ãa]o)\s*:",
                     desc,
                     maxsplit=1,
                     flags=re.IGNORECASE,
                 )[0].strip()
+                desc = re.sub(r"^\d+\s*[-–—]\s*", "", desc)
                 desc = re.sub(r"\s+", " ", desc)
                 if self._descricao_util(desc):
                     candidatos.append(desc)
+
+        # DEPOIS do rótulo: [^\S\n]* não atravessa quebra de linha (senão
+        # "Descrição:\n10/09/2026Data de débito:" virava descrição do recibo)
+        if not candidatos:
+            for padrao in [
+                r"Descri[cç][aã]o\s*:[^\S\n]*([^\n]{3,120})",
+                r"Motivo\s+da\s+TED\s*:[^\S\n]*([^\n]{3,120})",
+            ]:
+                for match in re.finditer(padrao, texto, re.IGNORECASE):
+                    desc = re.sub(r"\s+", " ", match.group(1).strip())
+                    if self._descricao_util(desc):
+                        candidatos.append(desc)
 
         if candidatos:
             # Prefere o candidato mais "legível" (com espaço ou underscore de PC_)
@@ -385,9 +401,14 @@ class ReciboGenerator:
 
         texto = comprovante.texto_extraido or ""
         padroes = [
-            r"(?:Dados de quem recebeu\s*Nome:|Nome do favorecido:)\s*([^\n]{5,})",
-            r"(?:Nome|FAVORECIDO|Beneficiário)\s*:?\s*([^\n]{5,})",
-            r"(?:favorecido|beneficiario|recebedor|fornecedor)\s*:?\s*([^\n]{5,})",
+            # ANTES do rótulo (Bradesco: "MARCELO ALVES FERREIRANome do favorecido:")
+            # (sem \s na classe: não atravessa quebra de linha)
+            r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'\-]{4,60}?)\s*Nome\s+do\s+favorecido\s*:",
+            r"([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ .'\-]{4,60}?)\s*Nome\s*:",
+            # DEPOIS: [^\S\n]* não atravessa quebra de linha
+            r"(?:Dados de quem recebeu\s*Nome:|Nome do favorecido):[^\S\n]*([^\n]{5,})",
+            r"(?:Nome|FAVORECIDO|Beneficiário)\s*:[^\S\n]*([^\n]{5,})",
+            r"(?:favorecido|beneficiario|recebedor|fornecedor)\s*:[^\S\n]*([^\n]{5,})",
         ]
         for padrao in padroes:
             match = re.search(padrao, texto, re.IGNORECASE)
@@ -395,7 +416,12 @@ class ReciboGenerator:
                 nome = match.group(1).strip()
                 nome = re.sub(r"^Nome:\s*", "", nome, flags=re.IGNORECASE)
                 nome = re.sub(r"\s*\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}", "", nome)
-                if len(nome) > 5 and not re.match(r"^[\d./-]+$", nome):
+                nome = re.sub(r"\s+", " ", nome)
+                if (len(nome) > 5 and not re.match(r"^[\d./-]+$", nome)
+                        and ":" not in nome
+                        and not any(p in nome.lower() for p in
+                                    ("bradesco", "telefone", "agência", "agencia",
+                                     "conta", "cnpj", "cpf", "empresa"))):
                     return nome[:120]
 
         desc = lancamento.descricao or ""
