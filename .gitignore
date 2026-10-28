@@ -1,0 +1,13 @@
+# Dados reais do caixa (extratos, comprovantes, sessões, backups) — fora do versionamento
+DOCUMENTOS - CAIXA/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# OS
+Thumbs.db
+Desktop.ini

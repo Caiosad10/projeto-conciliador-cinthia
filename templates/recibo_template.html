@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Recibo - INCA</title>
+    <style>
+        /* ===== RESET ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* ===== CONFIGURAÇÃO DA PÁGINA A4 ===== */
+        @page {
+            size: A4;
+            margin: 1.8cm 1.5cm;
+        }
+        
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            background: #e8e8e8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        /* ===== CARD PRINCIPAL ===== */
+        .recibo-card {
+            width: 100%;
+            max-width: 750px;
+            background: #ffffff;
+            border: 2px solid #2c3e50;
+            border-radius: 6px;
+            padding: 35px 45px 30px 45px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+            position: relative;
+            min-height: 400px;
+        }
+        
+        /* ===== LOGO ===== */
+        .logo-container {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            width: 100px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        /* ===== TÍTULO "RECIBO" ===== */
+        .titulo-recibo {
+            font-size: 30px;
+            font-weight: bold;
+            text-decoration: underline;
+            text-underline-offset: 6px;
+            text-align: center;
+            margin-top: 8px;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+            color: #1a1a1a;
+        }
+        
+        /* ===== VALOR EM DESTAQUE ===== */
+        .valor-destaque {
+            font-size: 34px;
+            font-weight: bold;
+            text-align: center;
+            margin: 18px 0 22px 0;
+            color: #1a1a1a;
+            letter-spacing: 1px;
+        }
+        
+        /* ===== TEXTO DO RECIBO ===== */
+        .texto-recibo {
+            font-size: 15px;
+            line-height: 2.1;
+            text-align: justify;
+            margin: 18px 0 22px 0;
+            color: #1a1a1a;
+        }
+        
+        .texto-recibo .destaque {
+            font-weight: bold;
+        }
+        
+        /* ===== DATA ===== */
+        .data-local {
+            text-align: right;
+            font-size: 15px;
+            margin-top: 18px;
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+        
+        /* ===== ASSINATURA ===== */
+        .area-assinatura {
+            margin-top: 40px;
+            text-align: center;
+        }
+        
+        .texto-assinatura {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+        
+        .linha-assinatura {
+            border-top: 1.5px solid #000000;
+            width: 260px;
+            margin: 6px auto;
+        }
+        
+        .label-assinatura {
+            font-size: 12px;
+            color: #888888;
+            margin-top: 4px;
+        }
+        
+        /* ===== RODAPÉ ===== */
+        .rodape-recibo {
+            margin-top: 25px;
+            padding-top: 12px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+            font-size: 9px;
+            color: #aaaaaa;
+            letter-spacing: 0.3px;
+        }
+        
+        /* ===== ESTILO PARA IMPRESSÃO ===== */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+                margin: 0;
+            }
+            .recibo-card {
+                border: none;
+                box-shadow: none;
+                padding: 25px 35px 20px 35px;
+                max-width: 100%;
+                border-radius: 0;
+                min-height: auto;
+            }
+            .logo-container {
+                top: 12px;
+                right: 25px;
+            }
+        }
+        
+        /* ===== ESTILO PARA TELAS PEQUENAS ===== */
+        @media screen and (max-width: 600px) {
+            .recibo-card {
+                padding: 25px 20px 20px 20px;
+            }
+            .titulo-recibo {
+                font-size: 24px;
+            }
+            .valor-destaque {
+                font-size: 28px;
+            }
+            .texto-recibo {
+                font-size: 13px;
+            }
+            .logo-container {
+                top: 12px;
+                right: 15px;
+                width: 70px;
+                height: 45px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="recibo-card">
+        
+        <!-- ===== LOGO ===== -->
+        <div class="logo-container">
+            <img src="logo_inca.jpg" alt="INCA">
+        </div>
+        
+        <!-- ===== TÍTULO ===== -->
+        <div class="titulo-recibo">RECIBO</div>
+        
+        <!-- ===== VALOR ===== -->
+        <div class="valor-destaque">R$ {VALOR}</div>
+        
+        <!-- ===== TEXTO PRINCIPAL ===== -->
+        <div class="texto-recibo">
+            Recibo de INCA LTDA – Incorporação, Construções e Administração de Imóveis LTDA, 
+            a quantia de <span class="destaque">R$ {VALOR}</span> 
+            (<span class="destaque">{VALOR_EXTENSO}</span>), referente a 
+            <span class="destaque">{DESCRICAO}</span>
+        </div>
+        
+        <!-- ===== DATA ===== -->
+        <div class="data-local">{CIDADE}, {DATA}.</div>
+        
+        <!-- ===== RODAPÉ ===== -->
+        <div class="rodape-recibo">
+            Documento gerado automaticamente - INCA Financeiro
+        </div>
+        
+    </div>
+</body>
+</html>
