@@ -70,3 +70,18 @@ DOCUMENTOS - CAIXA/   # dados reais do caixa (fora do Git — ver .gitignore)
 - Cache de parse de PDFs p/ restore instantâneo
 - Caminhos relativos na sessão (mudar de pasta não quebra vínculos)
 - Aceitar `.docx` no "+ PDF" do diálogo manual
+
+## Gerar o executavel (Windows)
+
+Quem herda o sistema **nao precisa de Python** - basta o `.exe`. Para regenerar a build:
+
+```bash
+pip install pyinstaller
+python -m PyInstaller --noconfirm --onefile --windowed --name ConciliadorINCA --icon "assets\inca.ico" --add-data "assets;assets" --add-data "templates;templates" main_qt.py
+```
+
+- Saida: `dist/ConciliadorINCA.exe` (arquivo unico; renomeie como quiser - ex. `Conciliador INCA.exe`)
+- Icone: `assets/inca.ico` (gerado do `templates/logo_inca.jpg`; quadrado vermelho INCA)
+- `--windowed` = sem terminal; `templates/` vai embutido (modelo DOCX do recibo)
+- A receita versionada e o `ConciliadorINCA.spec`; artefatos `build/` e `dist/` ficam fora do Git
+- **SmartScreen/antivirus**: exe sem certificado de assinatura pode avisar "App nao reconhecido" na primeira execucao - e esperado; *Mais informacoes -> Executar assim mesmo*

@@ -11,3 +11,7 @@ venv/
 # OS
 Thumbs.db
 Desktop.ini
+
+# PyInstaller
+/build/
+/dist/
